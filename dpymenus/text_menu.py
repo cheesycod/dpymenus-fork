@@ -60,18 +60,26 @@ class TextMenu(BaseMenu):
 
         return any(response == res for res in valid_response) if isinstance(valid_response, List) else valid_response == response
 
+    # response_is alias
+    response_in = response_is
+
     async def open(self):
         """The entry point to a new TextMenu instance; starts the main menu loop.
         Manages gathering user input, basic validation, sending messages, and cancellation requests."""
         try:
             await super()._open()
+
         except SessionError as exc:
             logging.info(exc.message)
+
         else:
             first_iter = True
+
             while self.active:
+                self.register('next', self.page.on_next_event)
+
                 if not first_iter and self.page.on_fail_event:
-                    return await self.page.on_fail_event()
+                    return await self.emit('fail')
 
                 first_iter = False
 
@@ -93,6 +101,6 @@ class TextMenu(BaseMenu):
 
     def _is_cancelled(self) -> bool:
         """Checks input for a cancellation string. If there is a match, it calls the ``menu.cancel()`` method and returns True."""
-        if self.response_is(QUIT):
+        if self.response_in(QUIT):
             return True
         return False
