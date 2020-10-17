@@ -2,6 +2,8 @@ from typing import Callable, List
 
 from discord import Embed
 
+from dpymenus.style import Style
+
 
 class Page(Embed):
     """Represents a single page inside a menu."""
@@ -40,9 +42,9 @@ class Page(Embed):
     def on_next_event(self) -> Callable:
         return getattr(self, '_on_next_event', None)
 
-    def on_next(self, func: Callable) -> 'Page':
+    def on_next(self, fn: Callable) -> 'Page':
         """Sets the function that will be called when the `next` event runs. Returns itself for fluent-style chaining."""
-        self._on_next_event = func
+        self._on_next_event = fn
 
         return self
 
@@ -50,9 +52,9 @@ class Page(Embed):
     def on_fail_event(self) -> Callable:
         return getattr(self, '_on_fail_event', None)
 
-    def on_fail(self, func: Callable) -> 'Page':
+    def on_fail(self, fn: Callable) -> 'Page':
         """Sets the function that will be called when the `fail` event runs. Returns itself for fluent-style chaining."""
-        self._on_fail_event = func
+        self._on_fail_event = fn
 
         return self
 
@@ -60,9 +62,9 @@ class Page(Embed):
     def on_cancel_event(self) -> Callable:
         return getattr(self, '_on_cancel_event', None)
 
-    def on_cancel(self, func: Callable) -> 'Page':
+    def on_cancel(self, fn: Callable) -> 'Page':
         """Sets the function that will be called when the `cancel` event runs. Returns itself for fluent-style chaining."""
-        self._on_cancel_event = func
+        self._on_cancel_event = fn
 
         return self
 
@@ -70,9 +72,9 @@ class Page(Embed):
     def on_timeout_event(self) -> Callable:
         return getattr(self, '_on_timeout_event', None)
 
-    def on_timeout(self, func: Callable) -> 'Page':
+    def on_timeout(self, fn: Callable) -> 'Page':
         """Sets the function that will be called when the `timeout` event runs. Returns itself for fluent-style chaining."""
-        self._on_timeout_event = func
+        self._on_timeout_event = fn
 
         return self
 
@@ -80,3 +82,11 @@ class Page(Embed):
         """Returns a page stripped of Callables and Page-specific properties so we can send it as a standard Embed."""
         safe_embed = self.to_dict()
         return Embed.from_dict(safe_embed)
+
+    def style(self, styles: Style) -> 'Page':
+        _Embed = Embed.from_dict(vars(styles))
+        for k, v in vars(styles).items():
+            if getattr(self, k) is None:
+                setattr(self, k, v)
+
+        return self

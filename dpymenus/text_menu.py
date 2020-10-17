@@ -18,6 +18,7 @@ class TextMenu(BaseMenu):
 
     def __init__(self, ctx: Context):
         super().__init__(ctx)
+        self.register('open', self.__loop)
 
     def __repr__(self):
         return f'TextMenu(pages={[p.__str__() for p in self.pages]}, page={self.page}, timeout={self.timeout}, data={self.data})'
@@ -64,8 +65,7 @@ class TextMenu(BaseMenu):
     response_in = response_is
 
     async def open(self):
-        """The entry point to a new TextMenu instance; starts the main menu loop.
-        Manages gathering user input, basic validation, sending messages, and cancellation requests."""
+        """The entry point to a new TextMenu instance; starts the main menu loop."""
         try:
             await super()._open()
 
@@ -73,25 +73,7 @@ class TextMenu(BaseMenu):
             logging.info(exc.message)
 
         else:
-            first_iter = True
-
-            while self.active:
-                self.register('next', self.page.on_next_event)
-
-                if not first_iter and self.page.on_fail_event:
-                    return await self.emit('fail')
-
-                first_iter = False
-
-                self.input = await self._get_input()
-
-                if self.input:
-                    await self._cleanup_input()
-
-                    if self._is_cancelled():
-                        return await self._execute_cancel()
-
-                    await self.page.on_next_event(self)
+            await self.emit('open')
 
     # Internal Methods
     async def _cleanup_input(self):
@@ -104,3 +86,24 @@ class TextMenu(BaseMenu):
         if self.response_in(QUIT):
             return True
         return False
+
+    async def __loop(self):
+        """Main menu loop. Manages gathering user input, basic validation, sending messages, and cancellation requests."""
+        first_iter = True
+
+        while self.active:
+            if not first_iter and self.page.on_fail_event:
+                return await self.emit('fail')
+
+            first_iter = False
+            self.register('next', self.page.on_next_event)
+
+            self.input = await self._get_input()
+
+            if self.input:
+                await self._cleanup_input()
+
+                if self._is_cancelled():
+                    return await self.emit('close')
+
+                await self.emit('next')

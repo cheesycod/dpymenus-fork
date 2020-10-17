@@ -1,12 +1,14 @@
 import abc
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
+import discord
 from discord import Embed, Message, Reaction, TextChannel, User
 from discord.abc import GuildChannel
 from discord.ext.commands import Context
 
+from dpymenus.event import Event
 from dpymenus.exceptions import PagesError, SessionError
 from dpymenus.page import Page
 
@@ -40,12 +42,21 @@ class BaseMenu(abc.ABC):
         self.input: Optional[Union[Message, Reaction]] = None
         self.output: Optional[Message] = None
         self.history: List[int] = []
+        self.events: List[Event] = [
+            Event(self, 'close', self._execute_cancel),
+            Event(self, 'timeout', self._execute_timeout)
+        ]
 
     @abc.abstractmethod
     async def open(self):
         """The entry point to a new TextMenu instance; starts the main menu loop.
         Manages gathering user input, basic validation, sending messages, and cancellation requests."""
         pass
+
+    def register(self, name: str, callback: Callable):
+        """Registers an event and callback to handle when emit."""
+        self.events.append(Event(name, callback))
+        print([e.name for e in self.events])
 
     @property
     def timeout(self) -> int:
@@ -145,6 +156,10 @@ class BaseMenu(abc.ABC):
 
     def add_pages(self, pages: List[PageType]) -> 'BaseMenu':
         """Adds a list of pages to a menu, setting their index based on the position in the list.."""
+        s = Style(color=discord.Color.blue())
+        styled_page = Page()
+        styled_page.color = s.color
+
         for i, page in enumerate(pages):
             if type(page) == Embed:
                 page = Page.from_dict(page.to_dict())
@@ -268,3 +283,8 @@ class BaseMenu(abc.ABC):
         else:
             sessions.update({(self.ctx.author.id, self.ctx.channel.id): self})
             return True
+
+    async def emit(self, name: str, *args, **kwargs):
+        for event in self.events:
+            if event.name == name:
+                await event.fire(*args, **kwargs)
